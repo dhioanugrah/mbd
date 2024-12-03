@@ -408,6 +408,48 @@ END //
 DELIMITER ;
 
 DELIMITER //
+CREATE PROCEDURE get_pemesanan_by_name(IN p_customer_name VARCHAR(100))
+BEGIN
+    -- Deklarasi variabel terlebih dahulu
+    DECLARE v_customer_id INT;
+
+    -- Deklarasi handler untuk penanganan kesalahan
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        -- Rollback jika terjadi kesalahan
+        ROLLBACK;
+        -- Mengirimkan pesan kesalahan
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transaksi gagal saat mengambil data pemesanan berdasarkan nama customer.';
+    END;
+
+    -- Mulai transaksi
+    START TRANSACTION;
+
+    -- Mengambil CustomerID berdasarkan nama customer
+    SELECT CustomerID INTO v_customer_id
+    FROM customer
+    WHERE Name = p_customer_name;
+
+    -- Jika customer tidak ditemukan, beri error
+    IF v_customer_id IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Customer tidak ditemukan dengan nama tersebut.';
+    END IF;
+
+    -- Mengambil data pemesanan berdasarkan CustomerID yang ditemukan
+    SELECT OrderID, CustomerID, ServiceID, Status, Date
+    FROM pemesanan
+    WHERE CustomerID = v_customer_id;
+
+    -- Selesaikan transaksi
+    COMMIT;
+
+END //
+DELIMITER ;
+
+
+
+
+DELIMITER //
 CREATE PROCEDURE insert_pemesanan(IN p_customer_id INT, IN p_service_id INT, IN p_status VARCHAR(50), IN p_date DATE)
 BEGIN
     -- Deklarasi handler untuk penanganan kesalahan
@@ -1119,72 +1161,99 @@ INSERT INTO review (CustomerID, OrderID, Rating, Comment) VALUES
 (3, 3, 5, 'Layanan cepat dan memuaskan!'),
 (4, 4, 4, 'Sedikit lambat, tetapi hasilnya bagus.');
 //-------------------------------------------------------------------------------//
-
-dibawah ini masih salah
-
-
-DELIMITER //
-CREATE PROCEDURE get_reviews_for_order(
-    IN p_order_id INT
-)
+DELIMITER $$
+CREATE FUNCTION generate_report(
+    p_month INT,
+    p_year INT
+) RETURNS JSON
 BEGIN
-    -- Ambil semua review untuk pesanan tertentu
-    SELECT r.Rating, r.Comment, c.Name
-    FROM review r
-    JOIN customer c ON r.CustomerID = c.CustomerID
-    WHERE r.OrderID = p_order_id;
-END //
+    DECLARE total_orders INT DEFAULT 0;
+    DECLARE total_income DECIMAL(10, 2) DEFAULT 0.00;
+    DECLARE report JSON;
+
+    -- Ambil jumlah pesanan dan total pendapatan
+    SELECT 
+        COUNT(p.OrderID),
+        SUM(pay.Amount)
+    INTO 
+        total_orders,
+        total_income
+    FROM 
+        pemesanan p
+    JOIN 
+        payment pay 
+    ON 
+        p.OrderID = pay.OrderID
+    WHERE 
+        MONTH(pay.PaymentDate) = p_month
+        AND YEAR(pay.PaymentDate) = p_year;
+
+    -- Buat laporan dalam format JSON
+    SET report = JSON_OBJECT(
+        'TotalOrders', total_orders,
+        'TotalIncome', total_income
+    );
+
+    RETURN report;
+END$$
 DELIMITER ;
-CALL get_reviews_for_order(1);
 
 
 DELIMITER //
-CREATE PROCEDURE generate_report(
+CREATE PROCEDURE generate_report_procedure(
     IN p_month INT,
     IN p_year INT
 )
 BEGIN
-    -- Menghasilkan laporan jumlah pesanan dan total pendapatan untuk bulan tertentu
-    SELECT 
-        COUNT(p.OrderID) AS TotalOrders,
-        SUM(pay.Amount) AS TotalIncome
-    FROM pemesanan p
-    JOIN payment pay ON p.OrderID = pay.OrderID
-    WHERE MONTH(pay.PaymentDate) = p_month
-    AND YEAR(pay.PaymentDate) = p_year;
+    DECLARE v_report JSON;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transaksi gagal saat menghasilkan laporan.';
+    END;
+
+    START TRANSACTION;
+
+    -- Memanggil function generate_report
+    SET v_report = generate_report(p_month, p_year);
+
+    -- Menampilkan hasil dalam bentuk JSON
+    SELECT v_report AS Report;
+
+    COMMIT;
 END //
 DELIMITER ;
-CALL generate_report(10, 2024); -- Menghasilkan laporan untuk bulan Oktober 2024
+
+
+
+
+
+//------------------------------------------------------------------------------//
 
 
 DELIMITER //
-CREATE FUNCTION hitung_jumlah_pesanan(
-    p_customer_id INT
-) 
-RETURNS INT
-DETERMINISTIC
+
+CREATE VIEW review_by_customer_name AS
+SELECT r.ReviewID, r.CustomerID, r.OrderID, r.Rating, r.Comment, c.Name AS CustomerName
+FROM review r
+JOIN customer c ON r.CustomerID = c.CustomerID;
+
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE get_reviews_by_customer_name(IN p_customer_name VARCHAR(255))
 BEGIN
-    DECLARE v_count INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transaksi gagal saat mengambil data review berdasarkan nama customer.';
+    END;
 
-    SELECT COUNT(*) INTO v_count
-    FROM pemesanan
-    WHERE CustomerID = p_customer_id;
-
-    RETURN v_count;
+    START TRANSACTION;
+    SELECT ReviewID, CustomerID, OrderID, Rating, Comment, CustomerName
+    FROM review_by_customer_name
+    WHERE CustomerName = p_customer_name;
+    COMMIT;
 END //
 DELIMITER ;
-SELECT hitung_jumlah_pesanan(3) AS JumlahPesanan;
-
-
-DELIMITER //
-CREATE VIEW view_laporan_pendapatan AS
-SELECT 
-    MONTH(pay.PaymentDate) AS Bulan,
-    YEAR(pay.PaymentDate) AS Tahun,
-    SUM(pay.Amount) AS TotalPendapatan
-FROM 
-    payment pay
-GROUP BY 
-    YEAR(pay.PaymentDate), MONTH(pay.PaymentDate);
-DELIMITER ;
-

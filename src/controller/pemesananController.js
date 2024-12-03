@@ -67,3 +67,44 @@ exports.deletePemesanan = (req, res) => {
         }
     });
 };
+
+// Mendapatkan pemesanan berdasarkan nama customer
+exports.getPemesananByName = (req, res) => {
+    const { p_customer_name } = req.query;  // Menggunakan query parameter
+
+    if (!p_customer_name) {
+        return res.status(400).json({ message: 'Nama customer diperlukan.' });
+    }
+
+    Pemesanan.getPemesananByName(p_customer_name, (err, result) => {
+        if (err) {
+            res.status(500).json({ message: 'Gagal mengambil data pemesanan.', error: err });
+        } else {
+            res.status(200).json({
+                message: 'Data pemesanan berdasarkan nama customer berhasil ditemukan.',
+                data: result
+            });
+        }
+    });
+};
+
+// Fungsi untuk mendapatkan pemesanan berdasarkan nama customer
+exports.getPemesananByName = (req, res) => {
+    const { customerName } = req.body;  // Mengambil nama customer dari body request
+
+    // Memanggil fungsi di model untuk mengambil pemesanan berdasarkan nama customer
+    Pemesanan.getPemesananByName(customerName, (err, results) => {
+        if (err) {
+            console.error('Error executing query', err);
+            return res.status(500).send('Server error');
+        }
+
+        if (results && results[0].length > 0) {
+            // Jika ada hasil, kirimkan data pemesanan
+            res.status(200).json(results[0]);
+        } else {
+            // Jika tidak ada hasil, beri respon bahwa customer tidak ditemukan
+            res.status(404).json({ message: 'Customer not found or no orders found' });
+        }
+    });
+};

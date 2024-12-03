@@ -31,3 +31,9 @@ exports.delete = (id, callback) => {
     const query = 'CALL delete_pemesanan(?)';  // Memanggil prosedur delete_pemesanan
     db.query(query, [id], callback);
 };
+
+// Mengambil pemesanan berdasarkan nama customer
+exports.getPemesananByName = (customerName, callback) => {
+    const query = 'CALL get_pemesanan_by_name(?)';  // Memanggil stored procedure
+    db.query(query, [customerName], callback);  // Menjalankan query dan mengirimkan callback
+};

@@ -61,3 +61,25 @@ exports.deletePayment = (req, res) => {
         }
     });
 };
+
+
+// Mendapatkan laporan pembayaran berdasarkan bulan dan tahun dari body
+exports.generateReportByBody = (req, res) => {
+    const { month, year } = req.body;
+
+    // Validasi input
+    if (!month || !year) {
+        return res.status(400).json({ message: 'Parameter bulan (month) dan tahun (year) diperlukan.' });
+    }
+
+    Payment.generateReport(month, year, (err, result) => {
+        if (err) {
+            res.status(500).send(err);
+        } else {
+            res.status(200).json({
+                message: 'Laporan pembayaran berhasil diambil.',
+                report: result[0] // Hasil pertama dari query
+            });
+        }
+    });
+};

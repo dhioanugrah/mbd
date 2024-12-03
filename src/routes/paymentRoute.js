@@ -8,4 +8,7 @@ router.post('/', PaymentController.createPayment); // Menambahkan pembayaran bar
 router.put('/:id', PaymentController.updatePayment); // Memperbarui pembayaran
 router.delete('/:id', PaymentController.deletePayment); // Menghapus pembayaran
 
+router.post('/report', PaymentController.generateReportByBody); // Mendapatkan laporan berdasarkan body
+
+
 module.exports = router;

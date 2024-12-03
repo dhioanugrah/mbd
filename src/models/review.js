@@ -79,3 +79,17 @@ exports.deleteReview = (reviewId, callback) => {
         }
     });
 };
+
+
+// Fungsi untuk mendapatkan review berdasarkan nama customer
+exports.getReviewsByCustomerName = function(customerName) {
+    return new Promise((resolve, reject) => {
+        const query = 'CALL get_reviews_by_customer_name(?)';
+        db.query(query, [customerName], (err, results) => {
+            if (err) {
+                return reject(err);
+            }
+            resolve(results[0]); // Karena hasil prosedur ada dalam array [0]
+        });
+    });
+};

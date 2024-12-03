@@ -80,3 +80,33 @@ exports.deleteReview = (req, res) => {
         }
     });
 };
+
+// Controller untuk mendapatkan review berdasarkan nama customer
+exports.getReviewByCustomername = async (req, res) => {
+    try {
+        // Mengambil nama customer dari body request
+        const customerName = req.body.name; // Pastikan body mengandung 'name'
+
+        if (!customerName) {
+            return res.status(400).json({ message: 'Customer name is required.' });
+        }
+
+        // Mengambil data review berdasarkan nama customer
+        const reviews = await Review.getReviewsByCustomerName(customerName);
+
+        if (reviews.length === 0) {
+            return res.status(404).json({ message: 'No reviews found for this customer.' });
+        }
+
+        res.status(200).json({
+            message: 'Reviews retrieved successfully',
+            data: reviews,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: 'Error retrieving reviews.',
+            error: error.message,
+        });
+    }
+};

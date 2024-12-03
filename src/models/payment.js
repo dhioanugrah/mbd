@@ -31,3 +31,10 @@ exports.delete = (id, callback) => {
     const query = 'CALL delete_payment(?)';
     db.query(query, [id], callback);
 };
+
+// Memanggil procedure untuk mendapatkan laporan
+exports.generateReport = (month, year, callback) => {
+    const query = 'CALL generate_report_procedure(?, ?)';
+    db.query(query, [month, year], callback);
+};
+

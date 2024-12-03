@@ -20,4 +20,6 @@ router.delete('/reviews/:id', reviewController.deleteReview);
 // Mendapatkan review berdasarkan CustomerID
 router.get('/reviews/customer/:CustomerID', reviewController.getReviewByCustomerId);  // Perbaiki rute
 
+router.post('/reviews/byname', reviewController.getReviewByCustomername);
+
 module.exports = router;
