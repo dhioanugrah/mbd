@@ -374,14 +374,27 @@ BEGIN
     -- Mulai transaksi
     START TRANSACTION;
 
-    -- Mengambil semua data pemesanan
-    SELECT OrderID, CustomerID, ServiceID, Status, Date FROM pemesanan;
+    -- Mengambil semua data pemesanan dan status pembayaran
+    SELECT 
+        p.OrderID, 
+        p.CustomerID, 
+        p.ServiceID, 
+        p.Status, 
+        p.Date, 
+        CASE
+            WHEN EXISTS (
+                SELECT 1 FROM payment pay WHERE pay.OrderID = p.OrderID
+            ) THEN 'Lunas'
+            ELSE 'Belum Lunas'
+        END AS PaymentStatus
+    FROM pemesanan p;
 
     -- Selesaikan transaksi
     COMMIT;
 
 END //
 DELIMITER ;
+
 
 DELIMITER //
 CREATE PROCEDURE get_pemesanan_by_id(IN p_order_id INT)
@@ -398,14 +411,28 @@ BEGIN
     -- Mulai transaksi
     START TRANSACTION;
 
-    -- Mengambil data pemesanan berdasarkan OrderID
-    SELECT OrderID, CustomerID, ServiceID, Status, Date FROM pemesanan WHERE OrderID = p_order_id;
+    -- Mengambil data pemesanan dan status pembayaran berdasarkan OrderID
+    SELECT 
+        p.OrderID, 
+        p.CustomerID, 
+        p.ServiceID, 
+        p.Status, 
+        p.Date, 
+        CASE
+            WHEN EXISTS (
+                SELECT 1 FROM payment pay WHERE pay.OrderID = p.OrderID
+            ) THEN 'Lunas'
+            ELSE 'Belum Lunas'
+        END AS PaymentStatus
+    FROM pemesanan p
+    WHERE p.OrderID = p_order_id;
 
     -- Selesaikan transaksi
     COMMIT;
 
 END //
 DELIMITER ;
+
 
 DELIMITER //
 CREATE PROCEDURE get_pemesanan_by_name(IN p_customer_name VARCHAR(100))
@@ -435,16 +462,28 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Customer tidak ditemukan dengan nama tersebut.';
     END IF;
 
-    -- Mengambil data pemesanan berdasarkan CustomerID yang ditemukan
-    SELECT OrderID, CustomerID, ServiceID, Status, Date
-    FROM pemesanan
-    WHERE CustomerID = v_customer_id;
+    -- Mengambil data pemesanan dan status pembayaran berdasarkan CustomerID yang ditemukan
+    SELECT 
+        p.OrderID, 
+        p.CustomerID, 
+        p.ServiceID, 
+        p.Status, 
+        p.Date, 
+        CASE
+            WHEN EXISTS (
+                SELECT 1 FROM payment pay WHERE pay.OrderID = p.OrderID
+            ) THEN 'Lunas'
+            ELSE 'Belum Lunas'
+        END AS PaymentStatus
+    FROM pemesanan p
+    WHERE p.CustomerID = v_customer_id;
 
     -- Selesaikan transaksi
     COMMIT;
 
 END //
 DELIMITER ;
+
 
 
 
@@ -1257,3 +1296,55 @@ BEGIN
     COMMIT;
 END //
 DELIMITER ;
+
+
+DELIMITER //
+CREATE TRIGGER after_payment_insert
+AFTER INSERT ON payment
+FOR EACH ROW
+BEGIN
+    UPDATE pemesanan
+    SET PaymentStatus = 'Lunas'
+    WHERE OrderID = NEW.OrderID;
+END //
+DELIMITER ;
+
+CREATE VIEW status_pembayaran AS
+SELECT 
+    p.OrderID,
+    p.CustomerID,
+    p.ServiceID,
+    CASE
+        WHEN EXISTS (
+            SELECT 1 
+            FROM payment pay 
+            WHERE pay.OrderID = p.OrderID
+        ) THEN 'Lunas'
+        ELSE 'Belum Lunas'
+    END AS PaymentStatus
+FROM pemesanan p;
+
+DELIMITER //
+CREATE PROCEDURE get_status_pembayaran_by_customer_name(IN p_customer_name VARCHAR(255))
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Gagal mengambil status pembayaran berdasarkan nama customer.';
+    END;
+
+    START TRANSACTION;
+    SELECT sp.OrderID, sp.CustomerID, sp.ServiceID, sp.PaymentStatus
+    FROM status_pembayaran sp
+    JOIN customer c ON sp.CustomerID = c.CustomerID
+    WHERE c.Name = p_customer_name;
+    COMMIT;
+END //
+DELIMITER ;
+
+
+
+ALTER TABLE pemesanan 
+ADD COLUMN PaymentStatus VARCHAR(50) DEFAULT 'Belum Lunas';
+
