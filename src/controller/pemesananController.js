@@ -68,25 +68,6 @@ exports.deletePemesanan = (req, res) => {
     });
 };
 
-// Mendapatkan pemesanan berdasarkan nama customer
-exports.getPemesananByName = (req, res) => {
-    const { p_customer_name } = req.query;  // Menggunakan query parameter
-
-    if (!p_customer_name) {
-        return res.status(400).json({ message: 'Nama customer diperlukan.' });
-    }
-
-    Pemesanan.getPemesananByName(p_customer_name, (err, result) => {
-        if (err) {
-            res.status(500).json({ message: 'Gagal mengambil data pemesanan.', error: err });
-        } else {
-            res.status(200).json({
-                message: 'Data pemesanan berdasarkan nama customer berhasil ditemukan.',
-                data: result
-            });
-        }
-    });
-};
 
 // Fungsi untuk mendapatkan pemesanan berdasarkan nama customer
 exports.getPemesananByName = (req, res) => {
@@ -106,5 +87,27 @@ exports.getPemesananByName = (req, res) => {
             // Jika tidak ada hasil, beri respon bahwa customer tidak ditemukan
             res.status(404).json({ message: 'Customer not found or no orders found' });
         }
+    });
+};
+
+
+// Controller untuk mendapatkan status pembayaran berdasarkan nama customer
+exports.getStatusPembayaranByCustomerName = (req, res) => {
+    const { customerName } = req.body; // Ambil nama customer dari body request
+
+    if (!customerName) {
+        return res.status(400).json({ message: 'Nama customer diperlukan.' });
+    }
+
+    Pemesanan.getStatusPembayaranByCustomerName(customerName, (err, results) => {
+        if (err) {
+            console.error('Error executing query:', err);
+            return res.status(500).send('Gagal mengambil status pembayaran berdasarkan nama customer.');
+        }
+
+        res.status(200).json({
+            message: 'Data status pembayaran berdasarkan nama customer berhasil ditemukan.',
+            data: results[0], // Hasil query
+        });
     });
 };

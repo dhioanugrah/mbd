@@ -37,3 +37,8 @@ exports.getPemesananByName = (customerName, callback) => {
     const query = 'CALL get_pemesanan_by_name(?)';  // Memanggil stored procedure
     db.query(query, [customerName], callback);  // Menjalankan query dan mengirimkan callback
 };
+
+exports.getStatusPembayaranByCustomerName = (customerName, callback) => {
+    const query = 'CALL get_status_pembayaran_by_customer_name(?)'; // Memanggil procedure
+    db.query(query, [customerName], callback); // Eksekusi query dengan parameter nama customer
+};
