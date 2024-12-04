@@ -42,3 +42,9 @@ exports.getStatusPembayaranByCustomerName = (customerName, callback) => {
     const query = 'CALL get_status_pembayaran_by_customer_name(?)'; // Memanggil procedure
     db.query(query, [customerName], callback); // Eksekusi query dengan parameter nama customer
 };
+
+// Mengecek penugasan order berdasarkan nama customer
+exports.checkOrderAssignmentByCustomerName = (customerName, callback) => {
+    const query = 'CALL check_order_assignment_by_customer(?)';
+    db.query(query, [customerName], callback);
+};

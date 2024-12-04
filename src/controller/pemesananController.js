@@ -111,3 +111,14 @@ exports.getStatusPembayaranByCustomerName = (req, res) => {
         });
     });
 };
+
+// Mengecek penugasan order berdasarkan nama customer
+exports.checkOrderAssignmentByCustomer = (req, res) => {
+    const { customerName } = req.body;
+    if (!customerName) return res.status(400).send('Nama customer diperlukan.');
+    Pemesanan.checkOrderAssignmentByCustomerName(customerName, (err, results) => {
+        if (err) return res.status(500).send(err);
+        if (results[0].length === 0) return res.status(404).send('Order atau customer tidak ditemukan.');
+        res.status(200).json(results[0]);
+    });
+};

@@ -79,3 +79,24 @@ exports.createOrder = (req, res) => {
         else res.status(201).json({ message: 'Order created', results });
     });
 };
+
+// Fungsi untuk mendapatkan pemesanan berdasarkan nama customer
+exports.getCustomerByName = (req, res) => {
+    const { customerName } = req.body;  // Mengambil nama customer dari body request
+
+    // Memanggil fungsi di model untuk mengambil pemesanan berdasarkan nama customer
+    Customer.getCustomerByName(customerName, (err, results) => {
+        if (err) {
+            console.error('Error executing query', err);
+            return res.status(500).send('Server error');
+        }
+
+        if (results && results[0].length > 0) {
+            // Jika ada hasil, kirimkan data pemesanan
+            res.status(200).json(results[0]);
+        } else {
+            // Jika tidak ada hasil, beri respon bahwa customer tidak ditemukan atau tidak ada pemesanan
+            res.status(404).json({ message: 'Customer not found or no orders found' });
+        }
+    });
+};

@@ -63,3 +63,10 @@ exports.delete = (id, callback) => {
     });
 };
 
+
+
+// Mendapatkan pemesanan berdasarkan nama customer
+exports.getCustomerByName = (customerName, callback) => {
+    const query = 'CALL get_order_by_customer_name(?)';  // Memanggil prosedur yang baru dibuat
+    db.query(query, [customerName], callback);  // Menjalankan query dan mengirimkan callback
+};

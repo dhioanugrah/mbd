@@ -63,3 +63,25 @@ exports.deleteShoes = (req, res) => {
         }
     });
 };
+
+
+// Fungsi untuk mendapatkan sepatu berdasarkan nama customer
+exports.getSepatuByCustomerName = (req, res) => {
+    const { customerName } = req.body;  // Mengambil nama customer dari body request
+
+    // Memanggil fungsi di model untuk mengambil sepatu berdasarkan nama customer
+    Shoes.getSepatuByCustomerName(customerName, (err, results) => {
+        if (err) {
+            console.error('Error executing query', err);
+            return res.status(500).send('Server error');
+        }
+
+        if (results && results[0].length > 0) {
+            // Jika ada hasil, kirimkan data sepatu
+            res.status(200).json(results[0]);
+        } else {
+            // Jika tidak ada hasil, beri respon bahwa customer tidak ditemukan atau tidak ada sepatu
+            res.status(404).json({ message: 'Customer not found or no shoes found' });
+        }
+    });
+};

@@ -8,4 +8,6 @@ router.post('/', ShoesController.createShoes); // Menambahkan data sepatu baru
 router.put('/:id', ShoesController.updateShoes); // Memperbarui data sepatu
 router.delete('/:id', ShoesController.deleteShoes); // Menghapus data sepatu
 
+router.post('/sepatu-customer', ShoesController.getSepatuByCustomerName); // Mendapatkan data sepatu berdasarkan nama customer
+
 module.exports = router;

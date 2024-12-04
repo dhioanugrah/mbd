@@ -38,3 +38,15 @@ exports.getEmployeeById = (employeeId, callback) => {
     const query = 'CALL get_employee_by_id(?)';
     db.query(query, [employeeId], callback);
 };
+
+
+exports.getOrdersByEmployeeName = (employeeName, callback) => {
+    const query = 'CALL get_orders_by_employee_name(?)'; // Panggil prosedur
+    db.query(query, [employeeName], (err, results) => {
+        if (err) {
+            console.error('Error executing procedure:', err);
+            return callback(err, null);
+        }
+        callback(null, results[0]); // Prosedur mengembalikan hasil di indeks 0
+    });
+};

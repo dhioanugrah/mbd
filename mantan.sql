@@ -82,7 +82,7 @@ create or replace PROCEDURE tambah_customer (
 BEGIN
     -- Deklarasi handler untuk penanganan kesalahan
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
+    begin	
         -- Rollback jika terjadi kesalahan
         ROLLBACK;
         -- Mengirimkan pesan kesalahan
@@ -106,6 +106,55 @@ BEGIN
     SELECT 'Data customer berhasil ditambahkan.' AS Message;
 END //
 DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE get_order_by_customer_name(IN p_customer_name VARCHAR(100))
+BEGIN
+    -- Deklarasi variabel untuk CustomerID
+    DECLARE v_customer_id INT;
+
+    -- Deklarasi handler untuk penanganan kesalahan
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        -- Rollback jika terjadi kesalahan
+        ROLLBACK;
+        -- Mengirimkan pesan kesalahan
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transaksi gagal saat mengambil data pemesanan berdasarkan nama customer.';
+    END;
+
+    -- Mulai transaksi
+    START TRANSACTION;
+
+    -- Mengambil CustomerID berdasarkan nama customer
+    SELECT CustomerID INTO v_customer_id
+    FROM customer
+    WHERE Name = p_customer_name;
+
+    -- Jika customer tidak ditemukan, beri error
+    IF v_customer_id IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Customer tidak ditemukan dengan nama tersebut.';
+    END IF;
+
+    -- Mengambil pemesanan dan informasi sepatu terkait
+    SELECT 
+        p.OrderID,
+        p.Status,
+        CASE
+            WHEN EXISTS (SELECT 1 FROM payment pay WHERE pay.OrderID = p.OrderID) THEN 'Lunas'
+            ELSE 'Belum Lunas'
+        END AS PaymentStatus,
+        GROUP_CONCAT(CONCAT(s.Type, ' ', s.Brand, ' ', s.Color) ORDER BY s.ShoesID) AS ShoesNames
+    FROM pemesanan p
+    LEFT JOIN shoes s ON p.OrderID = s.OrderID
+    WHERE p.CustomerID = v_customer_id
+    GROUP BY p.OrderID, p.Status;
+
+    -- Selesaikan transaksi
+    COMMIT;
+
+END //
+DELIMITER ;
+
 
 
 DELIMITER //
@@ -218,6 +267,90 @@ BEGIN
 
 END //
 DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE get_orders_by_employee_id(IN _employee_id INT)
+BEGIN
+    -- Menangani error
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Mengambil daftar orderan yang diambil oleh employee berdasarkan Assignment
+    SELECT 
+        o.OrderID,
+        o.Status AS OrderStatus,
+        o.Date AS OrderDate,
+        c.Name AS CustomerName,
+        s.ServiceName,
+        COALESCE(COUNT(sh.ShoesID), 0) AS ShoesCount
+    FROM order_assignment oa
+    JOIN pemesanan o ON oa.OrderID = o.OrderID
+    JOIN customer c ON o.CustomerID = c.CustomerID
+    JOIN service s ON o.ServiceID = s.ServiceID
+    LEFT JOIN shoes sh ON o.OrderID = sh.OrderID
+    WHERE oa.EmployeeID = _employee_id
+    GROUP BY o.OrderID, o.Status, o.Date, c.Name, s.ServiceName;
+
+    COMMIT;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE get_orders_by_employee_name(IN _employee_name VARCHAR(100))
+BEGIN
+    -- Variabel lokal
+    DECLARE v_employee_id INT;
+
+    -- Penanganan error
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    -- Mulai transaksi
+    START TRANSACTION;
+
+    -- Ambil EmployeeID berdasarkan nama
+    SELECT EmployeeID INTO v_employee_id
+    FROM employee
+    WHERE Name = _employee_name
+    LIMIT 1;
+
+    -- Jika karyawan tidak ditemukan
+    IF v_employee_id IS NULL THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Employee tidak ditemukan';
+    END IF;
+
+    -- Ambil daftar order
+    SELECT 
+        o.OrderID,
+        o.Status AS OrderStatus,
+        o.Date AS OrderDate,
+        c.Name AS CustomerName,
+        s.ServiceName,
+        COUNT(sh.ShoesID) AS ShoesCount
+    FROM order_assignment oa
+    JOIN pemesanan o ON oa.OrderID = o.OrderID
+    JOIN customer c ON o.CustomerID = c.CustomerID
+    JOIN service s ON o.ServiceID = s.ServiceID
+    LEFT JOIN shoes sh ON o.OrderID = sh.OrderID
+    WHERE oa.EmployeeID = v_employee_id
+    GROUP BY o.OrderID, o.Status, o.Date, c.Name, s.ServiceName;
+
+    -- Commit transaksi
+    COMMIT;
+END //
+DELIMITER ;
+
+
+
 
 contoh 
 INSERT INTO customer (Name, Email, Phone)
@@ -435,6 +568,46 @@ DELIMITER ;
 
 
 DELIMITER //
+CREATE PROCEDURE check_order_assignment_by_customer(
+    IN customerName VARCHAR(100)
+)
+BEGIN
+    -- Deklarasi handler untuk menangani kesalahan
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Terjadi kesalahan saat memeriksa penugasan order.';
+    END;
+
+    -- Memulai transaksi
+    START TRANSACTION;
+
+    -- Query untuk mengecek apakah order dari customer telah ditugaskan
+    SELECT 
+        c.Name AS CustomerName,
+        p.OrderID,
+        CASE 
+            WHEN EXISTS (
+                SELECT 1 
+                FROM order_assignment oa 
+                WHERE oa.OrderID = p.OrderID
+            ) THEN 'Sudah Ditugaskan'
+            ELSE 'Belum Ditugaskan'
+        END AS AssignmentStatus
+    FROM 
+        customer c
+    JOIN 
+        pemesanan p ON c.CustomerID = p.CustomerID
+    WHERE 
+        c.Name = customerName;
+
+    -- Menyelesaikan transaksi
+    COMMIT;
+END //
+DELIMITER ;
+
+
+DELIMITER //
 CREATE PROCEDURE get_pemesanan_by_name(IN p_customer_name VARCHAR(100))
 BEGIN
     -- Deklarasi variabel terlebih dahulu
@@ -608,6 +781,53 @@ BEGIN
     COMMIT;
 END //
 DELIMITER //
+
+
+DELIMITER //
+CREATE PROCEDURE get_sepatu_by_customer_name(IN p_customer_name VARCHAR(100))
+BEGIN
+    -- Deklarasi variabel untuk CustomerID
+    DECLARE v_customer_id INT;
+
+    -- Deklarasi handler untuk penanganan kesalahan
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        -- Rollback jika terjadi kesalahan
+        ROLLBACK;
+        -- Mengirimkan pesan kesalahan
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Transaksi gagal saat mengambil data sepatu berdasarkan nama customer.';
+    END;
+
+    -- Mulai transaksi
+    START TRANSACTION;
+
+    -- Mengambil CustomerID berdasarkan nama customer
+    SELECT CustomerID INTO v_customer_id
+    FROM customer
+    WHERE Name = p_customer_name;
+
+    -- Jika customer tidak ditemukan, beri error
+    IF v_customer_id IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Customer tidak ditemukan dengan nama tersebut.';
+    END IF;
+
+    -- Menampilkan sepatu yang terkait dengan OrderID customer yang ditemukan
+    SELECT 
+        s.ShoesID,
+        s.OrderID,
+        s.Type,
+        s.Brand,
+        s.Color
+    FROM shoes s
+    JOIN pemesanan p ON s.OrderID = p.OrderID
+    WHERE p.CustomerID = v_customer_id;
+
+    -- Selesaikan transaksi
+    COMMIT;
+
+END //
+DELIMITER ;
+
 
 DELIMITER //
 CREATE PROCEDURE insert_shoes(IN p_order_id INT, IN p_type VARCHAR(100), IN p_brand VARCHAR(100), IN p_color VARCHAR(50))

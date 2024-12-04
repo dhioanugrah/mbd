@@ -12,5 +12,6 @@ router.delete('/:id', pemesananController.deletePemesanan);
 router.post('/by-name', pemesananController.getPemesananByName);// Route POST untuk mendapatkan status pembayaran berdasarkan nama customer
 router.post('/status-pembayaran-byname', pemesananController.getStatusPembayaranByCustomerName);
 
+router.post('/check-assignment', pemesananController.checkOrderAssignmentByCustomer);
 
 module.exports = router;

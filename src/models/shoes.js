@@ -31,3 +31,9 @@ exports.delete = (id, callback) => {
     const query = 'CALL delete_shoes(?)';
     db.query(query, [id], callback);
 };
+
+// Mendapatkan sepatu berdasarkan nama customer
+exports.getSepatuByCustomerName = (customerName, callback) => {
+    const query = 'CALL get_sepatu_by_customer_name(?)';  // Memanggil prosedur yang baru dibuat
+    db.query(query, [customerName], callback);  // Menjalankan query dan mengirimkan callback
+};

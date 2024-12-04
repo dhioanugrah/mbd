@@ -10,4 +10,5 @@ router.post('/login', employeeController.loginEmployee);
 router.put('/edit', employeeController.editEmployee);
 router.delete('/delete/:EmployeeID', employeeController.deleteEmployee);
 
+router.post('/orders', employeeController.getOrdersByEmployeeName);
 module.exports = router;
